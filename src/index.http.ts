@@ -13,13 +13,13 @@ if (!BASE_URL) {
 
 app.use(express.json())
 
-// Health check — useful for load balancers / uptime monitors
-app.get('/health', (_req, res) => {
+// Health check — accessible at /health or /mcp/health
+app.get(['/health', '/mcp/health'], (_req, res) => {
   res.json({ status: 'ok', server: 'projecthub-mcp', transport: 'http' })
 })
 
 // MCP endpoint — each request carries the agent's own Bearer token
-app.all('/mcp', async (req, res) => {
+app.all(['/mcp', '/'], async (req, res) => {
   // Extract the agent's ProjectHub API key from the Authorization header
   const authHeader = (req.headers['authorization'] ?? '') as string
   const token = authHeader.replace(/^Bearer\s+/i, '').trim()
