@@ -1,0 +1,23 @@
+{
+  "name": "projecthub-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for ProjectHub LLM — agent-first project management",
+  "type": "module",
+  "bin": {
+    "projecthub-mcp": "./build/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node build/index.js",
+    "inspector": "npx @modelcontextprotocol/inspector node build/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  }
+}
