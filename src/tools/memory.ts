@@ -7,17 +7,19 @@ export function registerMemoryTools(server: McpServer, api: ApiClient) {
   // ── Search ────────────────────────────────────────────────────────────
   server.tool(
     'memory_search',
-    `Semantic vector search across shared workspace memories using mxbai-embed-large embeddings.
+    `Semantic vector search across org memories using mxbai-embed-large embeddings.
+By default searches ALL workspaces in the org. Pass workspace_id to narrow scope.
 Returns results ranked by similarity score (0.0–1.0). Score ≥ 0.75 is a strong match.
 Falls back to keyword search if the embedding service is unreachable.
 Use this BEFORE storing a new memory to check if it already exists.
 Use this to retrieve any previously stored context: credentials, IPs, domains, facts, skills.`,
     {
-      q:     z.string().min(2).describe('Natural language query, e.g. "production database password" or "deploy skill for Laravel"'),
-      limit: z.number().int().min(1).max(50).optional().default(10).describe('Max results to return (default 10)'),
+      q:            z.string().min(2).describe('Natural language query, e.g. "production database password" or "deploy skill for Laravel"'),
+      limit:        z.number().int().min(1).max(50).optional().default(10).describe('Max results to return (default 10)'),
+      workspace_id: z.string().uuid().optional().describe('Limit search to a specific workspace UUID. Omit to search all workspaces in the org.'),
     },
-    async ({ q, limit }) => {
-      const result = await api.post('/memory/search', { q, limit })
+    async ({ q, limit, workspace_id }) => {
+      const result = await api.post('/memory/search', { q, limit, workspace_id })
       return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] }
     },
   )
@@ -25,19 +27,21 @@ Use this to retrieve any previously stored context: credentials, IPs, domains, f
   // ── Store ─────────────────────────────────────────────────────────────
   server.tool(
     'memory_store',
-    `Store a new memory in the shared workspace. Automatically embedded for future semantic search.
-All agents in the same workspace can read this memory regardless of model (Claude, GPT-4, Gemini, etc.).
+    `Store a new memory in the org. Automatically embedded for future semantic search.
+All agents in the same org can read this memory regardless of model (Claude, GPT-4, Gemini, etc.).
+Pass workspace_id to store into a specific workspace; omits defaults to the first workspace in the org.
 Types: credential, domain, ip, fact, config, note, skill, other.
-Use is_sensitive=true for passwords, tokens, or secrets — value will be masked in list views.
+Use is_sensitive=true for passwords, tokens, or secrets — value and content masked in list views.
 Use a key for memories you will update later (e.g. "prod-db-password", "main-api-url").`,
     {
       label:        z.string().describe('Short human-readable label, e.g. "Production DB password"'),
       content:      z.string().describe('Descriptive text used for embedding and search. Describe what this memory is and when to use it.'),
       type:         z.enum(['credential', 'domain', 'ip', 'fact', 'config', 'note', 'skill', 'other']).default('fact'),
-      key:          z.string().optional().describe('Optional named key for direct retrieval or future updates. Must be unique in the workspace.'),
+      workspace_id: z.string().uuid().optional().describe('Target workspace UUID. Defaults to the first workspace in the org if omitted.'),
+      key:          z.string().optional().describe('Optional named key for direct retrieval or future updates. Must be unique within the target workspace.'),
       value:        z.record(z.unknown()).optional().describe('Structured data, e.g. { username: "admin", password: "secret", host: "db.prod" }'),
       tags:         z.array(z.string()).optional().describe('Tags for grouping, e.g. ["prod", "mysql", "backend"]'),
-      is_sensitive: z.boolean().optional().default(false).describe('Set true for passwords, tokens, secrets. Masks value in list/search responses.'),
+      is_sensitive: z.boolean().optional().default(false).describe('Set true for passwords, tokens, secrets. Masks content and value in list/search responses.'),
       expires_at:   z.string().optional().describe('ISO 8601 datetime after which this memory is excluded from search/list'),
     },
     async (args) => {
@@ -50,11 +54,13 @@ Use a key for memories you will update later (e.g. "prod-db-password", "main-api
   server.tool(
     'memory_upsert',
     `Create or update a memory by named key. Idempotent — safe to call multiple times.
-If the key exists, updates it and re-embeds if content changed.
+If the key exists in the target workspace, updates it and re-embeds if content changed.
 If the key does not exist, creates it.
+Pass workspace_id to scope the upsert to a specific workspace; defaults to the first workspace.
 Preferred over memory_store for memories that change over time (e.g. current deploy version, active config).`,
     {
-      key:          z.string().describe('Named key unique within the workspace, e.g. "prod-db-password", "current-sprint"'),
+      key:          z.string().describe('Named key unique within the target workspace, e.g. "prod-db-password", "current-sprint"'),
+      workspace_id: z.string().uuid().optional().describe('Target workspace UUID. Defaults to the first workspace in the org if omitted.'),
       label:        z.string().optional().describe('Short human-readable label'),
       content:      z.string().optional().describe('Descriptive text for embedding. Required on first create.'),
       type:         z.enum(['credential', 'domain', 'ip', 'fact', 'config', 'note', 'skill', 'other']).optional(),
@@ -72,15 +78,17 @@ Preferred over memory_store for memories that change over time (e.g. current dep
   // ── List ──────────────────────────────────────────────────────────────
   server.tool(
     'memory_list',
-    `List workspace memories with optional filters.
+    `List org memories with optional filters.
+By default returns memories from ALL workspaces. Pass workspace_id to narrow to one workspace.
 Use memory_search for finding memories by meaning.
 Use memory_list to browse by type, tag, or named key.`,
     {
-      type:  z.enum(['credential', 'domain', 'ip', 'fact', 'config', 'note', 'skill', 'other']).optional().describe('Filter by type'),
-      tags:  z.string().optional().describe('Comma-separated tags to filter by'),
-      key:   z.string().optional().describe('Retrieve a specific named memory by exact key'),
-      q:     z.string().optional().describe('Keyword search on label, content, or key'),
-      limit: z.number().int().min(1).max(100).optional().default(50),
+      workspace_id: z.string().uuid().optional().describe('Filter to a specific workspace UUID. Omit for all org workspaces.'),
+      type:         z.enum(['credential', 'domain', 'ip', 'fact', 'config', 'note', 'skill', 'other']).optional().describe('Filter by type'),
+      tags:         z.string().optional().describe('Comma-separated tags to filter by'),
+      key:          z.string().optional().describe('Retrieve a specific named memory by exact key'),
+      q:            z.string().optional().describe('Keyword search on label, content, or key'),
+      limit:        z.number().int().min(1).max(100).optional().default(50),
     },
     async (params) => {
       const qs = new URLSearchParams(
