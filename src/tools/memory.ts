@@ -119,9 +119,11 @@ Use memory_list to browse by type, tag, or named key.`,
   // ── Update ────────────────────────────────────────────────────────────
   server.tool(
     'memory_update',
-    'Update a memory by ID. Re-embeds automatically if content changes.',
+    `Update a memory by ID. Re-embeds automatically if content changes.
+Pass workspace_id to move the memory to a different workspace within the same org.`,
     {
       id:           z.string().uuid().describe('Memory UUID'),
+      workspace_id: z.string().uuid().optional().describe('Move memory to this workspace UUID (must belong to the same org)'),
       label:        z.string().optional(),
       content:      z.string().optional(),
       type:         z.enum(['credential', 'domain', 'ip', 'fact', 'config', 'note', 'skill', 'other']).optional(),
