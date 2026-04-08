@@ -1,11 +1,11 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { api } from '../api/client.js'
+import { type ApiClient } from '../api/client.js'
 
 const TaskStatus   = z.enum(['backlog', 'todo', 'in_progress', 'done', 'blocked'])
 const TaskPriority = z.enum(['low', 'medium', 'high', 'critical'])
 
-export function registerTaskTools(server: McpServer) {
+export function registerTaskTools(server: McpServer, api: ApiClient) {
 
   // ── List ──────────────────────────────────────────────────────────────
   server.tool(

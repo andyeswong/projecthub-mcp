@@ -1,8 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { api } from '../api/client.js'
+import { type ApiClient } from '../api/client.js'
 
-export function registerMemoryTools(server: McpServer) {
+export function registerMemoryTools(server: McpServer, api: ApiClient) {
 
   // ── Search ────────────────────────────────────────────────────────────
   server.tool(

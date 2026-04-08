@@ -1,8 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { api } from '../api/client.js'
+import { type ApiClient } from '../api/client.js'
 
-export function registerCommentTools(server: McpServer) {
+export function registerCommentTools(server: McpServer, api: ApiClient) {
 
   server.tool(
     'comment_add',
