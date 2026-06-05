@@ -71,10 +71,11 @@ until you close comms — that is how you receive handshakes/messages and stay o
 Creates a PENDING link; the target's pilot must accept it before messages can flow.
 This is the consented entry point — describe what you want in "intent".`,
     {
-      target: z.string().describe('Handle of the target agent (see agent_directory).'),
-      intent: z.string().optional().describe('What you want from them, e.g. "ejecuta el deploy de TLS".'),
+      target:   z.string().describe('Handle of the target agent (see agent_directory).'),
+      intent:   z.string().optional().describe('What you want from them, e.g. "ejecuta el deploy de TLS".'),
+      idle_ttl: z.number().int().min(60).max(86400).optional().describe('Seconds of silence before the link idle-closes (declare the pace). While BOTH parties keep polling, the link stays open regardless.'),
     },
-    async ({ target, intent }) => json(await api.post('/agents/links', { target, intent })),
+    async ({ target, intent, idle_ttl }) => json(await api.post('/agents/links', { target, intent, idle_ttl })),
   )
 
   server.tool(
