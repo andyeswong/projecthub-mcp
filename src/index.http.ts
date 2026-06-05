@@ -1,6 +1,9 @@
 import express from 'express'
+import { randomUUID } from 'node:crypto'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js'
 import { createServer } from './server.js'
+import { createLiveServer } from './live.js'
 
 const app     = express()
 const BASE_URL = (process.env.PROJECTHUB_BASE_URL ?? '').replace(/\/$/, '')
@@ -13,9 +16,61 @@ if (!BASE_URL) {
 
 app.use(express.json())
 
+const bearerToken = (req: express.Request): string =>
+  ((req.headers['authorization'] ?? '') as string).replace(/^Bearer\s+/i, '').trim()
+
 // Health check — accessible at /health or /mcp/health
 app.get(['/health', '/mcp/health'], (_req, res) => {
   res.json({ status: 'ok', server: 'projecthub-mcp', transport: 'http' })
+})
+
+// ── Stateful "live" endpoint (opt-in, separate from the stateless /mcp) ───────
+// Sessions are retained so the server can push notifications/resources/updated to
+// a subscribed client (real-time inbox). The stateless /mcp below is unchanged,
+// so the existing fleet is unaffected.
+const liveTransports: Record<string, StreamableHTTPServerTransport> = {}
+
+app.all('/mcp/live', async (req, res) => {
+  const token = bearerToken(req)
+  if (!token.startsWith('sk_proj_')) {
+    res.status(401).json({ error: 'Missing or invalid Authorization header (Bearer sk_proj_...).' })
+    return
+  }
+
+  try {
+    const sessionId = req.headers['mcp-session-id'] as string | undefined
+    let transport = sessionId ? liveTransports[sessionId] : undefined
+
+    if (!transport) {
+      if (sessionId) {
+        res.status(404).json({ error: 'Unknown or expired session id.' })
+        return
+      }
+      if (!isInitializeRequest(req.body)) {
+        res.status(400).json({ error: 'No session id; expected an initialize request to open one.' })
+        return
+      }
+      const newTransport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => randomUUID(),
+        onsessioninitialized: (id) => { liveTransports[id] = newTransport },
+      })
+      newTransport.onclose = () => {
+        const id = newTransport.sessionId
+        if (id) delete liveTransports[id]
+      }
+      // Bind this session to the agent's token for its lifetime.
+      const server = createLiveServer(token, BASE_URL)
+      await server.connect(newTransport)
+      transport = newTransport
+    }
+
+    await transport.handleRequest(req, res, req.body)
+  } catch (err) {
+    console.error('MCP live request error:', err)
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Internal MCP live server error' })
+    }
+  }
 })
 
 // MCP endpoint — each request carries the agent's own Bearer token
@@ -52,6 +107,7 @@ app.all(['/mcp', '/'], async (req, res) => {
 
 app.listen(PORT, () => {
   console.error(`ProjectHub MCP HTTP server listening on port ${PORT}`)
-  console.error(`MCP endpoint: http://0.0.0.0:${PORT}/mcp`)
+  console.error(`MCP endpoint: http://0.0.0.0:${PORT}/mcp  (stateless)`)
+  console.error(`MCP live:     http://0.0.0.0:${PORT}/mcp/live  (stateful, push)`)
   console.error(`Base API:     ${BASE_URL}`)
 })
