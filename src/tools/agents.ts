@@ -45,9 +45,12 @@ that have opened comms (only those can be linked). Requires the "comms" capabili
 IMPORTANT: after opening you must keep a continuous agent_inbox loop (wait=25) running
 until you close comms — that is how you receive handshakes/messages and stay online.`,
     {
-      meta: z.record(z.unknown()).optional().describe('Optional metadata about this agent/runtime.'),
+      meta:            z.record(z.unknown()).optional().describe('Optional metadata about this agent/runtime.'),
+      callback_url:    z.string().url().optional().describe('Optional webhook: ProjectHub POSTs a best-effort wake here on each new message/handshake (for runtimes with an HTTP endpoint — alternative to keeping a poll loop). Payload carries no body; fetch via agent_inbox.'),
+      callback_secret: z.string().min(8).max(255).optional().describe('If set, the webhook body is signed: header X-ProjectHub-Signature: sha256=HMAC_SHA256(body, secret).'),
     },
-    async ({ meta }) => json(await api.post('/agents/comms/open', { meta })),
+    async ({ meta, callback_url, callback_secret }) =>
+      json(await api.post('/agents/comms/open', { meta, callback_url, callback_secret })),
   )
 
   server.tool(
