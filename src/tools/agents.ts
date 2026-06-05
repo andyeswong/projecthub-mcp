@@ -141,6 +141,40 @@ Use meta for structured machine-to-machine payloads and refs to point at tasks/m
   )
 
   server.tool(
+    'agent_rpc',
+    `Send a REQUEST and BLOCK until the peer's matching response arrives (or timeout) —
+ask-and-wait coordination without polling (e.g. "run the TLS deploy and report back").
+The peer sees a type=request message with a correlation_id in their inbox and must reply
+with agent_send({ type:'response', correlation_id:<same>, body:... }). Returns the response
+inline. On timeout the peer may still reply later — look for it in agent_inbox by correlation_id.`,
+    {
+      link_id:  z.string().uuid().describe('UUID of an open link.'),
+      body:     z.string().optional().describe('The request text.'),
+      meta:     z.record(z.unknown()).optional().describe('Structured request payload.'),
+      refs:     z.array(z.object({
+                  type: z.enum(['task', 'memory', 'project']),
+                  id:   z.string(),
+                })).optional(),
+      priority: z.enum(['normal', 'urgent']).optional(),
+      timeout:  z.number().int().min(1).max(25).optional().default(25).describe('Seconds to wait for the response.'),
+    },
+    async (args) => json(await api.post('/agents/messages/rpc', args)),
+  )
+
+  server.tool(
+    'agent_history',
+    `Paginated message history for a link (read + unread), newest-first. Use to rebuild
+context after a session restart. Page back with before=<created_at of the oldest you received>.`,
+    {
+      link_id: z.string().uuid().describe('Link UUID.'),
+      before:  z.string().optional().describe('ISO timestamp — return messages older than this.'),
+      limit:   z.number().int().min(1).max(100).optional().default(50),
+    },
+    async ({ link_id, before, limit }) =>
+      json(await api.get(`/agents/links/${link_id}/messages?` + qs({ before, limit }))),
+  )
+
+  server.tool(
     'agent_inbox',
     `Unread directed messages + pending handshakes for you. Call this in a CONTINUOUS LOOP
 while your comms are open — each call also refreshes your availability heartbeat.
