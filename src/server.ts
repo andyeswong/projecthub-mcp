@@ -5,6 +5,7 @@ import { registerTaskTools }    from './tools/tasks.js'
 import { registerProjectTools } from './tools/projects.js'
 import { registerEventTools }   from './tools/events.js'
 import { registerCommentTools } from './tools/comments.js'
+import { registerAgentChannelTools } from './tools/agents.js'
 
 export function createServer(token?: string, baseUrl?: string): McpServer {
   const server = new McpServer({
@@ -56,6 +57,7 @@ Share the login URL: https://your-host/login?token=plt_...`,
   registerProjectTools(server, api)
   registerEventTools(server, api)
   registerCommentTools(server, api)
+  registerAgentChannelTools(server, api)
 
   return server
 }
