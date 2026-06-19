@@ -90,6 +90,15 @@ app.all(['/mcp', '/'], async (req, res) => {
 
   try {
     // Each request gets its own server instance scoped to the agent's token
+    // Spec compliance: strict MCP clients (e.g. Crush) require the server to
+    // emit Mcp-Session-Id on the initialize response. This endpoint is stateless
+    // (the SDK ignores any inbound session id), so the value is cosmetic — but it
+    // lets strict clients finish the handshake instead of failing notifications/
+    // initialized with "context canceled". The tolerant fleet (Claude Code) is
+    // unaffected: it never sent a session id and stateless validateSession is a no-op.
+    if (isInitializeRequest(req.body)) {
+      res.setHeader('Mcp-Session-Id', randomUUID())
+    }
     const server    = createServer(token, BASE_URL)
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined, // stateless — no session tracking needed
