@@ -162,6 +162,33 @@ Pass workspace_id to move the memory to a different workspace within the same or
     },
   )
 
+  // ── Integrate (complement, not replace) ─────────────────────────────────
+  server.tool(
+    'memory_integrate',
+    `COMPLEMENT an existing memory — append new info / a correction WITHOUT overwriting.
+Use this (not memory_update) when reality refined a memory: a correction, a better way,
+or an error-trail ("the obvious X failed, the real one is Y"). The original content is
+PRESERVED; your note is appended and recorded in integration_log, and reinforced_count
+bumps (the repetition signal). This is "memories integrate, not replace" — the error-trail
+is kept because it pre-empts the same mistake next time, and it's where local procedural
+know-how accrues. Optionally attach origin (where this was learned) and associations
+(weighted edges to related memories for spreading-activation).`,
+    {
+      id:           z.string().uuid().describe('Memory UUID to complement'),
+      note:         z.string().min(1).describe('The new info / correction / error-trail to integrate. e.g. "PAT ghp_… is expired; the live one is in vault X" or "tried port 8080, it was 8099"'),
+      origin:       z.string().optional().describe('Where this was learned, e.g. "from Tim 2026-06", "hit in prod deploy"'),
+      associations: z.array(z.object({
+        id:     z.string().uuid().describe('Related memory UUID'),
+        weight: z.number().optional().describe('Edge strength 0–1 (higher = auto-fires more readily)'),
+        note:   z.string().optional().describe('Why related'),
+      })).optional().describe('Weighted edges to related memories (spreading-activation)'),
+    },
+    async ({ id, ...body }) => {
+      const result = await api.post(`/memory/${id}/integrate`, body)
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] }
+    },
+  )
+
   // ── Delete ────────────────────────────────────────────────────────────
   server.tool(
     'memory_delete',
