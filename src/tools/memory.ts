@@ -24,6 +24,30 @@ Use this to retrieve any previously stored context: credentials, IPs, domains, f
     },
   )
 
+  // ── Consolidate (⚠️ EXPERIMENTAL) ───────────────────────────────────────
+  server.tool(
+    'memory_consolidate',
+    `⚠️ EXPERIMENTAL — Retrieve memories like memory_search, but return ONE consolidated
+KNOWLEDGE block (rules + references + gotchas + provenance) instead of N raw memories.
+Runs the matched memories through an LLM knowledge-consolidator (server-configured,
+prod default DeepSeek deepseek-v4-flash) that generalizes recurring patterns into
+applicable rules and strips redundancy — typically ~10x fewer tokens than the raw set.
+
+This does NOT replace memory_search; the raw memories are untouched and returned in
+'provenance'. Output is LOSSY by design (drops examples/restated detail) — treat it as a
+CANDIDATE for human review. Sensitive memory content is masked before it reaches the LLM
+(secrets appear as [vault:mask]). Returns 503 if the consolidator is disabled server-side.`,
+    {
+      q:            z.string().min(2).describe('Natural language query — same as memory_search. The memories it matches get consolidated.'),
+      limit:        z.number().int().min(1).max(50).optional().default(15).describe('Max memories to retrieve and consolidate (default 15)'),
+      workspace_id: z.string().uuid().optional().describe('Limit to a specific workspace UUID. Omit to search all workspaces in the org.'),
+    },
+    async ({ q, limit, workspace_id }) => {
+      const result = await api.post('/memory/consolidate', { q, limit, workspace_id })
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] }
+    },
+  )
+
   // ── Store ─────────────────────────────────────────────────────────────
   server.tool(
     'memory_store',
