@@ -78,4 +78,16 @@ Pass the file as base64 in \`data\`. Give a rich \`description\` — it is embed
       return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] }
     },
   )
+
+  server.tool(
+    'asset_extract_palette',
+    `Read the brand palette out of an image asset's pixels — the dominant colors plus a proposed role for each (bg, text, accent, surface).
+Deterministic quantization, no vision model, so the hexes are really in the image. They are bucket averages: snap them to the brand's exact values before saving. Fonts are NOT inferred — they cannot be read off pixels honestly.
+Feed the result to brand_upsert as tokens.colors.`,
+    { id: z.string().uuid().describe('Asset UUID (must be an image)') },
+    async ({ id }) => {
+      const result = await api.post(`/assets/${id}/palette`)
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] }
+    },
+  )
 }
