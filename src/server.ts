@@ -9,6 +9,7 @@ import { registerAgentChannelTools } from './tools/agents.js'
 import { registerSessionTools }  from './tools/sessions.js'
 import { registerPersonalityTools } from './tools/personality.js'
 import { registerAssetTools } from './tools/assets.js'
+import { registerBrandTools } from './tools/brands.js'
 
 // Use provided credentials (HTTP mode) or fall back to env vars (stdio mode)
 export function resolveApi(token?: string, baseUrl?: string): ApiClient {
@@ -56,6 +57,7 @@ Share the login URL: https://your-host/login?token=plt_...`,
   registerSessionTools(server, api)
   registerPersonalityTools(server, api)
   registerAssetTools(server, api)
+  registerBrandTools(server, api)
 }
 
 export function createServer(token?: string, baseUrl?: string): McpServer {
