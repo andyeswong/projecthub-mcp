@@ -80,6 +80,17 @@ Pass the file as base64 in \`data\`. Give a rich \`description\` — it is embed
   )
 
   server.tool(
+    'asset_delete',
+    `Delete an asset by id: the row and the bytes on disk. Any brand that linked it keeps existing — only the link goes, and that slot on its board falls empty.
+Destructive and not undoable — confirm with the human first.`,
+    { id: z.string().uuid() },
+    async ({ id }) => {
+      const result = await api.delete(`/assets/${id}`)
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] }
+    },
+  )
+
+  server.tool(
     'asset_extract_palette',
     `Read the brand palette out of an image asset's pixels — the dominant colors plus a proposed role for each (bg, text, accent, surface).
 Deterministic quantization, no vision model, so the hexes are really in the image. They are bucket averages: snap them to the brand's exact values before saving. Fonts are NOT inferred — they cannot be read off pixels honestly.

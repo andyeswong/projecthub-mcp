@@ -28,11 +28,13 @@ Pass project_id (the project's brand, else its workspace default), or a slug to 
   server.tool(
     'brand_upsert',
     `Author/update a brand kit (idempotent per slug within a workspace).
-Set \`parent_slug\` to inherit from another brand: tokens and voice deep-merge (your keys win), rules union. Mark \`is_default\` to make it the workspace fallback.`,
+Inheritance is for SUB-BRANDS of the same brand (purple-ai -> purple-ai-assessment). Two sibling brands of one company do NOT inherit from each other: Fanta does not inherit from Coca-Cola. Leave them as roots.
+Set \`parent_slug\` to inherit: tokens and voice deep-merge (your keys win), rules union. Pass parent_slug: null to DISINHERIT; omit the field to leave the parent alone. Mark \`is_default\` to make it the workspace fallback.`,
     {
       slug:         z.string().describe('Brand slug, e.g. "alti"'),
       name:         z.string().optional().describe('Display name, e.g. "ALTI"'),
-      parent_slug:  z.string().optional().describe('Inherit from this brand (same workspace)'),
+      parent_slug:  z.string().nullable().optional()
+                      .describe('Inherit from this brand (same workspace). null = disinherit; omit = leave as is.'),
       tokens:       z.record(z.unknown()).optional().describe('{colors:{...}, fonts:{...}, radii:{...}, layout:{...}}'),
       voice:        z.record(z.unknown()).optional().describe('Tone of voice'),
       rules:        z.array(z.string()).optional().describe('Do/don\'t, e.g. "Never use gradients on the accent"'),
@@ -90,6 +92,17 @@ Set \`parent_slug\` to inherit from another brand: tokens and voice deep-merge (
     { brand_id: z.string().uuid(), asset_id: z.string().uuid() },
     async ({ brand_id, asset_id }) => {
       const result = await api.delete(`/brands/${brand_id}/assets/${asset_id}`)
+      return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] }
+    },
+  )
+
+  server.tool(
+    'brand_delete',
+    `Delete a brand by slug. Its asset LINKS go, the assets themselves live on. Any brand that inherited from it becomes a root, and any project pointing at it falls back to the workspace default.
+Destructive and not undoable — confirm with the human first.`,
+    { slug: z.string().describe('Brand slug to delete') },
+    async ({ slug }) => {
+      const result = await api.delete(`/brands/${encodeURIComponent(slug)}`)
       return { content: [{ type: 'text' as const, text: JSON.stringify(result, null, 2) }] }
     },
   )

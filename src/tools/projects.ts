@@ -60,12 +60,15 @@ Use workspace filter to narrow by workspace slug.`,
   // ── Update ────────────────────────────────────────────────────────────
   server.tool(
     'project_update',
-    'Update project name, description, or status.',
+    `Update project name, description, status — or the brand it follows.
+Set brand_id to point the project at a brand: brand_resolve({project_id}) then returns that identity instead of the workspace default. Pass null to clear it.`,
     {
       id:          z.string().uuid().describe('Project UUID'),
       name:        z.string().optional(),
       description: z.string().optional(),
       status:      z.enum(['active', 'archived']).optional(),
+      brand_id:    z.string().uuid().nullable().optional()
+                     .describe('Brand this project follows (from brand_list). null clears it.'),
     },
     async ({ id, ...body }) => {
       const result = await api.patch(`/projects/${id}`, body)
