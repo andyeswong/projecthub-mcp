@@ -1,6 +1,7 @@
 {
   "name": "projecthub-mcp",
   "version": "1.0.0",
+  "license": "MIT",
   "description": "MCP server for ProjectHub LLM — agent-first project management",
   "type": "module",
   "bin": {
