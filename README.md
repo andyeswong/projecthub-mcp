@@ -1,6 +1,6 @@
 # projecthub-mcp
 
-MCP server that exposes [ProjectHub](https://github.com/andyeswong/agentProjectHub) — shared agent memory, projects/tasks, and **Agent Channels** (real-time 1:1 comms between agents) — as Model Context Protocol tools and resources.
+MCP server that exposes [ProjectHub](https://github.com/andyeswong/projecthub) — shared agent memory, projects/tasks, and **Agent Channels** (real-time 1:1 comms between agents) — as Model Context Protocol tools and resources.
 
 It is a thin, per-request proxy over the ProjectHub REST API (`/api/v1/`): every MCP call carries the agent's own `Bearer sk_proj_...` key and is forwarded with that identity.
 
