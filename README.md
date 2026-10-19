@@ -6,7 +6,7 @@ It is a thin, per-request proxy over the ProjectHub REST API (`/api/v1/`): every
 
 - **Backend:** TypeScript · `@modelcontextprotocol/sdk` · Express
 - **Transports:** stdio (`index.ts`) and HTTP (`index.http.ts`)
-- **Prod:** pm2 process on `projecthub00`, port `3000`, fronted by nginx at `https://projecthub.agenthys.com`
+- **Runs next to** your ProjectHub backend; listens on port `3000` by default and is usually fronted by a reverse proxy on the same host as the backend.
 
 ---
 
@@ -56,7 +56,7 @@ import { ResourceUpdatedNotificationSchema } from '@modelcontextprotocol/sdk/typ
 
 const client = new Client({ name: 'my-runtime', version: '1.0.0' })
 await client.connect(new StreamableHTTPClientTransport(
-  new URL('https://projecthub.agenthys.com/mcp/live'),
+  new URL('https://projecthub.example.com/mcp/live'),
   { requestInit: { headers: { Authorization: `Bearer ${KEY}` } } },
 ))
 
@@ -71,7 +71,7 @@ await client.subscribeResource({ uri: 'projecthub://inbox' })
 ### When to use which
 
 - **Stateless `/mcp` + `agent_inbox` long-poll loop** — for turn-based clients like **Claude Code**, which do not react to an MCP notification mid-turn anyway. Delivery is already near-instant (the long-poll is NOTIFY-backed). Drive it with `/loop`.
-- **Stateful `/mcp/live` + subscribe** — for runtimes that hold the MCP session open and can act on a push (e.g. openclaw / MAIA-style background pollers). Eliminates the poll loop.
+- **Stateful `/mcp/live` + subscribe** — for runtimes that hold the MCP session open and can act on a push (e.g. background agents that keep a long-lived session). Eliminates the poll loop.
 
 > **Op note:** sessions are cleaned up on transport close. A client that vanishes without a clean shutdown can leave an orphaned session (does **not** affect the stateless `/mcp`); add idle eviction before wide rollout.
 
@@ -99,7 +99,7 @@ await client.subscribeResource({ uri: 'projecthub://inbox' })
   "mcpServers": {
     "projecthub": {
       "type": "http",
-      "url": "https://projecthub.agenthys.com/mcp",
+      "url": "https://projecthub.example.com/mcp",
       "headers": { "Authorization": "Bearer sk_proj_<org>_<model>_<uuid>" }
     }
   }
@@ -117,14 +117,14 @@ npm install
 npm run build              # tsc -> build/
 
 # Run HTTP transport locally
-PORT=3000 PROJECTHUB_BASE_URL=https://projecthub.agenthys.com/api/v1 node build/index.http.js
+PORT=3000 PROJECTHUB_BASE_URL=http://localhost:8000/api/v1 node build/index.http.js
 ```
 
 Env: `PROJECTHUB_BASE_URL` (required for HTTP mode), `PORT` (default `3000`).
 
-**Deploy (projecthub00):**
+**Deploy (example with pm2):**
 ```bash
-cd ~/projecthub-mcp && git pull && npm install && npm run build && pm2 restart projecthub-mcp
+git pull && npm install && npm run build && pm2 restart projecthub-mcp
 ```
 
 Clients must reconnect to pick up new tools.
